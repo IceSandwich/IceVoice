@@ -1,17 +1,15 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/IceSandwich/IceVoice/config"
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -66,36 +64,17 @@ func (m *modelBag) ShowTTS() {
 func listRun(cmd *cobra.Command, args []string) {
 	bag := modelBag{}
 
-	filepath.Walk(config.GetManifestsDir(), func(path string, info os.FileInfo, ex error) error {
-		if info.IsDir() || filepath.Ext(path) != ".json" {
-			return nil
-		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			log.WithError(err).Fatalf("failed to open manifest file %s, error: %v+", path, err)
-		}
-		defer f.Close()
-
-		data, err := io.ReadAll(f)
-		if err != nil {
-			log.WithError(err).Fatalf("failed to read manifest file %s, error: %v+", path, err)
-		}
-
-		var model config.ModelConfig
-		if err := json.Unmarshal(data, &model); err != nil {
-			log.WithError(err).Fatalf("failed to parse manifest file %s, error: %v+", path, err)
-		}
-
+	if err := config.WalkManifest(func(path string, model config.ModelConfig) error {
 		switch model.Task {
 		case TaskTTS:
 			bag.TTS = append(bag.TTS, model)
 		default:
-			log.Fatalf("unknown model task %s in manifest file %s", model.Task, path)
+			return errors.Errorf("unknown model task %s in manifest file %s", model.Task, path)
 		}
-
 		return nil
-	})
+	}); err != nil {
+		log.WithError(err).Fatal("cannot list models")
+	}
 
 	bag.ShowTTS()
 }
