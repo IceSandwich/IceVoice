@@ -65,14 +65,14 @@ func init() {
 }
 
 func RegisterGetRouter[I, O any](path string, handler func(context.Context, *I) (*O, error)) {
-	if app.isInit == false {
+	if !app.isInit {
 		initapp()
 	}
 	huma.Get(app.api, path, handler)
 }
 
 func RegisterAction(name string, callback func()) {
-	if app.isInit == false {
+	if !app.isInit {
 		initapp()
 	}
 	app.notifyActions = append(app.notifyActions, notifyItem{
